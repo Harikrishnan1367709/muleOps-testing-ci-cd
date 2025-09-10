@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+    <http:listener-config name="github-mule-cicd-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="github-mule-cicd-config" api="resource::b4e621f5-c474-430e-ad3a-586a08077621:github-mule-cicd:1.0.0:raml:zip:github-mule-cicd.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <configuration-properties doc:name="Configuration properties" doc:id="8e04b780-acc6-44fe-b25e-1cc28cc06128" file="config/${env}.yaml" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="b6b8fc56-ada8-4aae-8ce7-7ead783e70d0" file="config/${env}.yaml" key="${secureKey}" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<flow name="github-mule-cicd-main">
+        <http:listener config-ref="github-mule-cicd-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="github-mule-cicd-config" />
+    </flow>
+    <flow name="get:\resource:github-mule-cicd-config">
+        <choice doc:name="Choice" doc:id="58643b98-609e-4d7b-87d9-43d303b0bdef" >
+			<when expression='#[attributes.queryParams.choice == "1"]'>
+				<ee:transform doc:name="Transform Message" doc:id="c06cbdd6-da0d-4268-9e8e-cf592b48c959" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message": p('message.content'),
+  "securedMessage": p("secure::message.secureMessage"),
+  "demo": "This is a message from demo 25-July-2025",
+  "queryParamsNumber": attributes.queryParams.choice,
+  "choice": "custom"
+} ]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message": p('message.content'),
+  "securedMessage": p("secure::message.secureMessage"),
+  "demo": "This is a message from demo",
+  "queryParamsNumber":  attributes.queryParams.choice,
+  "choice": "default"
+} ]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="0e1cc620-357d-47d9-be37-a6a035ac49fa" message="#[payload]"/>
+    </flow>
+</mule>
