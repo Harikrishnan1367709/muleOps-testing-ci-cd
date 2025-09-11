@@ -1,0 +1,9 @@
+<settings>
+  <servers>
+    <server>
+      <id>Repository</id>
+      <username>${env.ANYPOINT_USERNAME}</username>
+      <password>${env.ANYPOINT_PASSWORD}</password>
+    </server>
+  </servers>
+</settings>
